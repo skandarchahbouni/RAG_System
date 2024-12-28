@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  ollama:
+    image: ollama/ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama:/root/.ollama
+
+  vectordb:
+    build: ./vectordb
+    image: skandarchahbouni/vectordb
+    ports:
+      - "8000:8000"
+    volumes:
+      - vectordb-stores:/app/vectordb-stores
+
+  information_retrieval:
+    build: ./information_retrieval
+    image: skandarchahbouni/information_retrieval
+    depends_on:
+      - ollama
+      - vectordb
+  
+  response_generator:
+    build: ./response_generator
+    image: skandarchahbouni/response_generator
+    depends_on:
+      - ollama
+      - vectordb
+      - information_retrieval
+
+volumes:
+  ollama:
+  vectordb-stores:

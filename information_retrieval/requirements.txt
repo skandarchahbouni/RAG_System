@@ -1,0 +1,5 @@
+chromadb==0.4.24
+python_magic==0.4.27
+numpy==1.26.4
+mattsollamatools==0.0.21
+nltk==3.9.1
