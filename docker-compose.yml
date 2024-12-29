@@ -26,15 +26,6 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
-      
-  docs_manager:
-    build: ./docs_manager
-    image: skandarchahbouni/docs_manager
-    depends_on:
-      ollama:
-        condition: service_healthy
-      vectordb:
-        condition: service_healthy
   
   information_retrieval:
     build: ./information_retrieval

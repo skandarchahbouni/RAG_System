@@ -3,8 +3,10 @@ import random
 import time
 import requests
 import os
+from utilities import calculate_embeddings
 
 QUERY_MANAGER_API = os.getenv("QUERY_MANAGER_API")
+DATA_PATH = os.getenv("DATA_PATH")
 
 
 def get_response(query: str):
@@ -40,8 +42,16 @@ def response_generator():
 st.title("🤖 RAG system")
 
 uploaded_files = st.file_uploader("Select files...", accept_multiple_files=True)
-for uploaded_file in uploaded_files:
-    bytes_data = uploaded_file.read()
+
+
+if uploaded_files:
+    st.write(f"Uploading {len(uploaded_files)} file(s) to the 'data' folder:")
+    for uploaded_file in uploaded_files:
+        file_path = os.path.join(DATA_PATH, uploaded_file.name)
+        with open(file_path, "wb") as f:
+            bytes_data = uploaded_file.read()
+            f.write(bytes_data)
+    calculate_embeddings()
 
 # Initialize chat history
 if "messages" not in st.session_state:
