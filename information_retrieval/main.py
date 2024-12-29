@@ -1,9 +1,9 @@
 from fastapi import FastAPI, HTTPException, Query
-from pydantic import BaseModel
 import requests
 import chromadb
 import os
 from utilities import pull_required_models
+from pydantic import BaseModel
 
 # Configuration
 EMBED_MODEL = os.getenv("EMBED_MODEL")
@@ -22,9 +22,14 @@ app = FastAPI()
 pull_required_models(ollama_api_host=OLLAMA_API_HOST, model_id=EMBED_MODEL)
 
 
-@app.get("/releavant_docs")
-async def query_docs(query: str = Query(...)) -> str:
+class QueryRequest(BaseModel):
+    query: str
+
+
+@app.post("/relevant_docs")
+async def query_docs(request: QueryRequest) -> str:
     try:
+        query = request.query  # Extract the query from the POST request body
         # Step 1: Get embeddings via Ollama API
         embedding_payload = {"model": EMBED_MODEL, "prompt": query}
         response = requests.post(
@@ -32,6 +37,7 @@ async def query_docs(query: str = Query(...)) -> str:
         )
         response.raise_for_status()  # Ensure the request was successful
         queryembed = response.json()["embedding"]
+
         # Step 2: Query the Chroma database for relevant documents
         relevantdocs = collection.query(query_embeddings=[queryembed], n_results=5)[
             "documents"

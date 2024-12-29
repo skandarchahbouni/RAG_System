@@ -16,13 +16,15 @@ class CombinedRequest(BaseModel):
     query: str
 
 
-@app.post("/rag_response")
+@app.post("/answer")
 async def combined_query(request: CombinedRequest):
     query = request.query
     try:
-        # Step 1: Request relevant documents
-        releavant_docs_response = requests.get(
-            f"{INFORMATION_RETRIEVAL_API_HOST}/releavant_docs", params={"query": query}
+        # Step 1: Request relevant documents (using POST instead of GET)
+        releavant_docs_payload = {"query": query}  # Send query in the body
+        releavant_docs_response = requests.post(
+            f"{INFORMATION_RETRIEVAL_API_HOST}/relevant_docs",
+            json=releavant_docs_payload,
         )
         releavant_docs_response.raise_for_status()  # Ensure the request was successful
         documents = releavant_docs_response.text  # Get documents as text
