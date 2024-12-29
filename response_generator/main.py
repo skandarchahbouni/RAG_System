@@ -1,54 +1,60 @@
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from utilities import pull_required_models
 import requests
-import sys
 import chromadb
+import os
 
 # Configuration
-EMBED_MODEL = "nomic-embed-text"
-MAIN_MODEL = "gemma:2b"
-OLLAMA_API_HOST = "http://ollama:11434"
-CHROMA_HOST = "vectordb"
-CHROMA_PORT = 8000
+EMBED_MODEL = os.getenv("EMBED_MODEL")
+MAIN_MODEL = os.getenv("MAIN_MODEL")
+OLLAMA_API_HOST = os.getenv("OLLAMA_API_HOST")
+CHROMA_HOST = os.getenv("CHROMA_HOST")
+CHROMA_PORT = os.getenv("CHROMA_PORT")
 
 # Chroma client setup
 chroma = chromadb.HttpClient(host=CHROMA_HOST, port=CHROMA_PORT)
-collection = chroma.get_or_create_collection("buildragwithpython")
 
-# Parse the query from command-line arguments
-query = " ".join(sys.argv[1:])
-
-# Step 0: Pull required models if they aren't already pulled
-response = requests.get(f"{OLLAMA_API_HOST}/v1/models")
-models = response.json()["data"]
-for m in [EMBED_MODEL, MAIN_MODEL]:
-    for model in models:
-        if model["id"] == m:
-            continue
-    payload = {"model": m}
-    res = requests.post(f"{OLLAMA_API_HOST}/api/pull", json=payload)
-    res.raise_for_status()
+# FastAPI app
+app = FastAPI()
 
 
-# Step 1: Get embeddings via Ollama API
-embedding_payload = {"model": EMBED_MODEL, "prompt": query}
-response = requests.post(f"{OLLAMA_API_HOST}/api/embeddings", json=embedding_payload)
-response.raise_for_status()  # Ensure the request was successful
-queryembed = response.json()["embedding"]
+# Ensure required models are pulled
+pull_required_models(ollama_api_host=OLLAMA_API_HOST, model_id=EMBED_MODEL)
+pull_required_models(ollama_api_host=OLLAMA_API_HOST, model_id=MAIN_MODEL)
 
-# Step 2: Query the Chroma database for relevant documents
-relevantdocs = collection.query(query_embeddings=[queryembed], n_results=5)[
-    "documents"
-][0]
-docs = "\n\n".join(relevantdocs)
 
-# Step 3: Generate a response using the main model via Ollama API
-modelquery = (
-    f"{query} - Answer that question using the following text as a resource: {docs}"
-)
+# Pydantic model for request body
+class GenerateRequest(BaseModel):
+    query: str
+    docs: str
 
-generate_payload = {"model": MAIN_MODEL, "prompt": modelquery, "stream": False}
-response = requests.post(f"{OLLAMA_API_HOST}/api/generate", json=generate_payload)
-response.raise_for_status()
-output = response.json()
 
-# Print the response
-print(output["response"])
+@app.post("/generate_response")
+async def generate_response(request: GenerateRequest):
+    query = request.query
+    docs = request.docs
+    try:
+        # Construct the model query
+        modelquery = f"{query} - Answer that question using the following text as a resource: {docs}"
+        # Send the query to Ollama API
+        generate_payload = {"model": MAIN_MODEL, "prompt": modelquery, "stream": False}
+        response = requests.post(
+            f"{OLLAMA_API_HOST}/api/generate", json=generate_payload
+        )
+        response.raise_for_status()  # Ensure the request was successful
+        output = response.json()
+        # Return the response
+        return {"response": output["response"]}
+    except requests.RequestException as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error communicating with Ollama API: {str(e)}"
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(app, host="0.0.0.0", port=5001)

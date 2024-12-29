@@ -2,11 +2,17 @@ version: '3.8'
 
 services:
   ollama:
-    image: ollama/ollama
+    build: ./ollama
+    image: skandarchahbouni/ollama 
     ports:
       - "11434:11434"
     volumes:
       - ollama:/root/.ollama
+    healthcheck:
+      test: "curl -f http://localhost:11434"
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   vectordb:
     build: ./vectordb
@@ -15,21 +21,66 @@ services:
       - "8000:8000"
     volumes:
       - vectordb-stores:/app/vectordb-stores
-
+    healthcheck:
+      test: "curl -f http://localhost:8000/docs"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      
+  docs_manager:
+    build: ./docs_manager
+    image: skandarchahbouni/docs_manager
+    depends_on:
+      ollama:
+        condition: service_healthy
+      vectordb:
+        condition: service_healthy
+  
   information_retrieval:
     build: ./information_retrieval
     image: skandarchahbouni/information_retrieval
+    ports:
+      - "5000:5000"
+    healthcheck:
+      test: "curl -f http://localhost:5000/docs"
+      interval: 30s
+      timeout: 5s
+      retries: 3
     depends_on:
-      - ollama
-      - vectordb
+      ollama:
+        condition: service_healthy
+      vectordb:
+        condition: service_healthy
   
   response_generator:
     build: ./response_generator
     image: skandarchahbouni/response_generator
+    ports:
+      - "5001:5001"
+    healthcheck:
+      test: "curl -f http://localhost:5001/docs"
+      interval: 30s
+      timeout: 5s
+      retries: 3
     depends_on:
-      - ollama
-      - vectordb
-      - information_retrieval
+      ollama:
+        condition: service_healthy
+
+  query_manager:
+    build: ./query_manager
+    image: skandarchahbouni/query_manager
+    ports:
+      - "5002:5002"
+    healthcheck:
+      test: "curl -f http://localhost:5002/docs"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    depends_on:
+      information_retrieval:
+        condition: service_healthy
+      response_generator:
+        condition: service_healthy
 
 volumes:
   ollama:

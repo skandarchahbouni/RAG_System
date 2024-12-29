@@ -1,76 +1,52 @@
+from fastapi import FastAPI, HTTPException, Query
+from pydantic import BaseModel
 import requests
 import chromadb
-import time
-from utilities import readtext
-from mattsollamatools import chunk_text_by_sentences
 import os
-import logging
+from utilities import pull_required_models
 
 # Configuration
-COLLECTION_NAME = "stories_collection"
-DATA_PATH = "data"
-OLLAMA_API_HOST = "http://ollama:11434"
-EMBED_MODEL = "nomic-embed-text"
+EMBED_MODEL = os.getenv("EMBED_MODEL")
+OLLAMA_API_HOST = os.getenv("OLLAMA_API_HOST")
+CHROMA_HOST = os.getenv("CHROMA_HOST")
+CHROMA_PORT = os.getenv("CHROMA_PORT")
 
-# Chroma setup
-chroma = chromadb.HttpClient(host="vectordb", port=8000)
+# Chroma client setup
+chroma = chromadb.HttpClient(host=CHROMA_HOST, port=CHROMA_PORT)
+collection = chroma.get_or_create_collection("buildragwithpython")
 
-# Delete collection if exists
-if any(collection.name == COLLECTION_NAME for collection in chroma.list_collections()):
-    print("deleting collection")
-    chroma.delete_collection(COLLECTION_NAME)
+# Initialize FastAPI app
+app = FastAPI()
 
-# Create collection
-collection = chroma.get_or_create_collection(
-    name=COLLECTION_NAME, metadata={"hnsw:space": "cosine"}
-)
+# Ensure required models are pulled
+pull_required_models(ollama_api_host=OLLAMA_API_HOST, model_id=EMBED_MODEL)
 
-starttime = time.time()
 
-# Pull the required models if they aren't already pulled
-already_pulled = False
-response = requests.get(f"{OLLAMA_API_HOST}/v1/models")
-for model in response.json()["data"]:
-    if model["id"] == EMBED_MODEL:
-        already_pulled = True
-        break
-if not already_pulled:
-    payload = {"model": EMBED_MODEL}
-    response = requests.post(f"{OLLAMA_API_HOST}/api/pull", json=payload)
-    response.raise_for_status()
-
-# Loop through all text files in the data path
-for filename in os.listdir(DATA_PATH):
-    file_path = os.path.join(DATA_PATH, filename)
-
-    # Check if it's a file
-    if os.path.isfile(file_path):
-        # Read the file content
-        text = readtext(file_path)
-
-        # Chunk the text by sentences
-        chunks = chunk_text_by_sentences(
-            source_text=text, sentences_per_chunk=7, overlap=0
+@app.get("/releavant_docs")
+async def query_docs(query: str = Query(...)) -> str:
+    try:
+        # Step 1: Get embeddings via Ollama API
+        embedding_payload = {"model": EMBED_MODEL, "prompt": query}
+        response = requests.post(
+            f"{OLLAMA_API_HOST}/api/embeddings", json=embedding_payload
         )
-        print(f"with {len(chunks)} chunks from {filename}")
+        response.raise_for_status()  # Ensure the request was successful
+        queryembed = response.json()["embedding"]
+        # Step 2: Query the Chroma database for relevant documents
+        relevantdocs = collection.query(query_embeddings=[queryembed], n_results=5)[
+            "documents"
+        ][0]
+        docs = "\n\n".join(relevantdocs)
+        return docs
+    except requests.RequestException as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error communicating with Ollama API: {str(e)}"
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 
-        # Embed each chunk and add it to the Chroma collection
-        for index, chunk in enumerate(chunks):
-            # Step 1: Get embeddings via Ollama API
-            embedding_payload = {"model": EMBED_MODEL, "prompt": chunk}
-            response = requests.post(
-                f"{OLLAMA_API_HOST}/api/embeddings", json=embedding_payload
-            )
-            response.raise_for_status()  # Ensure the request was successful
-            embed = response.json()["embedding"]
 
-            # Step 2: Add the embedding to the Chroma collection
-            print(".", end="", flush=True)
-            collection.add(
-                [filename + str(index)],
-                [embed],
-                documents=[chunk],
-                metadatas={"source": filename},
-            )
+if __name__ == "__main__":
+    import uvicorn
 
-logging.info("--- %s seconds ---" % (time.time() - starttime))
+    uvicorn.run(app, host="0.0.0.0", port=5000)
