@@ -1,6 +1,26 @@
 import streamlit as st
 import random
 import time
+import requests
+import os
+
+QUERY_MANAGER_API = os.getenv("QUERY_MANAGER_API")
+
+
+def get_response(query: str):
+    try:
+        payload = {"query": query}
+        response = requests.post(
+            f"{QUERY_MANAGER_API}/answer",
+            json=payload,
+        )
+        response.raise_for_status()
+        answer = response.json()["response"]
+        for word in answer.split():
+            yield word + " "
+            time.sleep(0.05)
+    except Exception as e:
+        raise e
 
 
 # Streamed response emulator
@@ -42,6 +62,6 @@ if prompt := st.chat_input("What is up?"):
 
     # Display assistant response in chat message container
     with st.chat_message("assistant"):
-        response = st.write_stream(response_generator())
+        response = st.write_stream(get_response(query=prompt))
     # Add assistant response to chat history
     st.session_state.messages.append({"role": "assistant", "content": response})

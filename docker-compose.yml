@@ -81,6 +81,15 @@ services:
         condition: service_healthy
       response_generator:
         condition: service_healthy
+  
+  gui:
+    build: ./gui
+    image: skandarchahbouni/gui
+    ports:
+      - "3000:3000"
+    depends_on:
+      query_manager: 
+        condition: service_healthy
 
 volumes:
   ollama:
