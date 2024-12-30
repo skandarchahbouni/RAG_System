@@ -2,12 +2,11 @@ import requests
 import chromadb
 import time
 from mattsollamatools import chunk_text_by_sentences
-import os, magic
+import os
 import logging
 
 # Configuration
 COLLECTION_NAME = os.getenv("COLLECTION_NAME")
-DATA_PATH = os.getenv("DATA_PATH")
 OLLAMA_API_HOST = os.getenv("OLLAMA_API_HOST")
 EMBED_MODEL = os.getenv("EMBED_MODEL")
 
@@ -43,57 +42,35 @@ def pull_required_models():
         response.raise_for_status()
 
 
-def readtext(path):
-    path = path.rstrip()
-    path = path.replace(" \n", "")
-    path = path.replace("%0A", "")
-    relative_path = path
-    filename = os.path.abspath(relative_path)
-    filetype = magic.from_file(filename, mime=True)
-    print(f"\nEmbedding {filename} as {filetype}")
-    text = ""
-    if filetype == "application/pdf":
-        print("PDF not supported yet")
-    if filetype == "text/plain":
-        with open(filename, "rb") as f:
-            text = f.read().decode("utf-8")
-    if os.path.exists(filename) and filename.find("content/") > -1:
-        os.remove(filename)
-    return text
-
-
-def calculate_embeddings():
+def calculate_embeddings(uploaded_files):
     pull_required_models()
     collection = chroma_setup()
     starttime = time.time()
     print("Calculate embeddings ..")
     # Loop through all text files in the data path
-    for filename in os.listdir(DATA_PATH):
-        file_path = os.path.join(DATA_PATH, filename)
+    for uploaded_file in uploaded_files:
+        filename = uploaded_file.name
         # Check if it's a file
-        if os.path.isfile(file_path):
-            # Read the file content
-            text = readtext(file_path)
-            # Chunk the text by sentences
-            chunks = chunk_text_by_sentences(
-                source_text=text, sentences_per_chunk=7, overlap=0
+        text = uploaded_file.read().decode("utf-8")
+        chunks = chunk_text_by_sentences(
+            source_text=text, sentences_per_chunk=7, overlap=0
+        )
+        print(f"with {len(chunks)} chunks from {filename}")
+        # Embed each chunk and add it to the Chroma collection
+        for index, chunk in enumerate(chunks):
+            # Step 1: Get embeddings via Ollama API
+            embedding_payload = {"model": EMBED_MODEL, "prompt": chunk}
+            response = requests.post(
+                f"{OLLAMA_API_HOST}/api/embeddings", json=embedding_payload
             )
-            print(f"with {len(chunks)} chunks from {filename}")
-            # Embed each chunk and add it to the Chroma collection
-            for index, chunk in enumerate(chunks):
-                # Step 1: Get embeddings via Ollama API
-                embedding_payload = {"model": EMBED_MODEL, "prompt": chunk}
-                response = requests.post(
-                    f"{OLLAMA_API_HOST}/api/embeddings", json=embedding_payload
-                )
-                response.raise_for_status()  # Ensure the request was successful
-                embed = response.json()["embedding"]
-                # Step 2: Add the embedding to the Chroma collection
-                print(".", end="", flush=True)
-                collection.add(
-                    [filename + str(index)],
-                    [embed],
-                    documents=[chunk],
-                    metadatas={"source": filename},
-                )
+            response.raise_for_status()  # Ensure the request was successful
+            embed = response.json()["embedding"]
+            # Step 2: Add the embedding to the Chroma collection
+            print(".", end="", flush=True)
+            collection.add(
+                [filename + str(index)],
+                [embed],
+                documents=[chunk],
+                metadatas={"source": filename},
+            )
     logging.info("--- %s seconds ---" % (time.time() - starttime))

@@ -7,7 +7,6 @@ RUN python -m nltk.downloader punkt_tab
 COPY . .
 RUN mkdir data
 ENV QUERY_MANAGER_API="http://query_manager:5002" \
-    DATA_PATH="data" \
     OLLAMA_API_HOST="http://ollama:11434" \
     EMBED_MODEL="nomic-embed-text" \
     COLLECTION_NAME="rag_collection"
