@@ -110,3 +110,6 @@ To run the entire system using Docker Compose, follow these steps:
 
 
 ## 📽️ Demo
+Here is the corrected version of your sentence:
+
+- You can view the demo by following this [link](https://drive.google.com/file/d/1MGCUfDa_M2dILiT1QBiox_HyKkcQ5y_y/view?usp=sharing).
