@@ -6,7 +6,6 @@ import chromadb
 import os
 
 # Configuration
-EMBED_MODEL = os.getenv("EMBED_MODEL")
 MAIN_MODEL = os.getenv("MAIN_MODEL")
 OLLAMA_API_HOST = os.getenv("OLLAMA_API_HOST")
 CHROMA_HOST = os.getenv("CHROMA_HOST")
@@ -20,7 +19,6 @@ app = FastAPI()
 
 
 # Ensure required models are pulled
-pull_required_models(ollama_api_host=OLLAMA_API_HOST, model_id=EMBED_MODEL)
 pull_required_models(ollama_api_host=OLLAMA_API_HOST, model_id=MAIN_MODEL)
 
 
