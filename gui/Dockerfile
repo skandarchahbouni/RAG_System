@@ -5,7 +5,6 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 RUN python -m nltk.downloader punkt_tab
 COPY . .
-RUN mkdir data
 ENV QUERY_MANAGER_API="http://query_manager:5002" \
     OLLAMA_API_HOST="http://ollama:11434" \
     EMBED_MODEL="nomic-embed-text" \

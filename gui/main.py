@@ -42,7 +42,7 @@ def get_response_stream(response):
 #         time.sleep(0.05)
 
 
-st.title("🤖 RAG system")
+st.title("🤖 Simple RAG System")
 
 if "hide_fileUploader" not in st.session_state:
     st.session_state.hide_fileUploader = False
@@ -89,7 +89,6 @@ if display_chat:
         # Display user message in chat message container
         with st.chat_message("user"):
             st.markdown(prompt)
-
         # Display assistant response in chat message container
         with st.chat_message("assistant"):
             with st.spinner("Analyzing... Please wait..."):
