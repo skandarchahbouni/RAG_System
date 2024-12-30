@@ -46,12 +46,20 @@ uploaded_files = st.file_uploader("Select files...", accept_multiple_files=True)
 
 if uploaded_files:
     st.write(f"Uploading {len(uploaded_files)} file(s) to the 'data' folder:")
-    for uploaded_file in uploaded_files:
-        file_path = os.path.join(DATA_PATH, uploaded_file.name)
-        with open(file_path, "wb") as f:
-            bytes_data = uploaded_file.read()
-            f.write(bytes_data)
-    calculate_embeddings()
+
+if st.button("Submit"):
+    if uploaded_files:
+        for uploaded_file in uploaded_files:
+            file_path = os.path.join(DATA_PATH, uploaded_file.name)
+            with open(file_path, "wb") as f:
+                bytes_data = uploaded_file.read()
+                f.write(bytes_data)
+        st.write("Please wait...")
+        calculate_embeddings()
+        st.success("You are good to go!")
+
+    else:
+        st.warning("No files to process. Please upload files first.")
 
 # Initialize chat history
 if "messages" not in st.session_state:

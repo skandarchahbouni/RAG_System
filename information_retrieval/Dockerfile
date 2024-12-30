@@ -8,6 +8,7 @@ COPY . .
 ENV EMBED_MODEL="nomic-embed-text" \
     OLLAMA_API_HOST="http://ollama:11434" \
     CHROMA_HOST="vectordb" \
-    CHROMA_PORT=8000
+    CHROMA_PORT=8000 \
+    COLLECTION_NAME="rag_collection"
 EXPOSE 5000
 CMD ["python", "main.py"]

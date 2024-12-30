@@ -10,10 +10,8 @@ EMBED_MODEL = os.getenv("EMBED_MODEL")
 OLLAMA_API_HOST = os.getenv("OLLAMA_API_HOST")
 CHROMA_HOST = os.getenv("CHROMA_HOST")
 CHROMA_PORT = os.getenv("CHROMA_PORT")
+COLLECTION_NAME = os.getenv("COLLECTION_NAME")
 
-# Chroma client setup
-chroma = chromadb.HttpClient(host=CHROMA_HOST, port=CHROMA_PORT)
-collection = chroma.get_or_create_collection("buildragwithpython")
 
 # Initialize FastAPI app
 app = FastAPI()
@@ -29,6 +27,9 @@ class QueryRequest(BaseModel):
 @app.post("/relevant_docs")
 async def query_docs(request: QueryRequest) -> str:
     try:
+        # Chroma client setup
+        chroma = chromadb.HttpClient(host=CHROMA_HOST, port=CHROMA_PORT)
+        collection = chroma.get_or_create_collection(COLLECTION_NAME)
         query = request.query  # Extract the query from the POST request body
         # Step 1: Get embeddings via Ollama API
         embedding_payload = {"model": EMBED_MODEL, "prompt": query}

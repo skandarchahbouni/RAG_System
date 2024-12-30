@@ -29,6 +29,8 @@
         - orchestrate the whole process, first it calls the IR microservice to get the context, than calls  the RG microservice to get the response, and displays the response to the user.
     
 
-
-! Problem: ==> the IR microservice needs to access the DB, which is handled by the DM microservice !!!
-    ===> simple solution: **shared volume**
+ ## Example questions:
+    - What does the lighthouse light represent in the story?
+    - What does Clara ask Elias to make for her?
+    - What does the woman in the garden ask Mira to do?
+    - What do the Whispering Shadows tell Hannah she needs?
