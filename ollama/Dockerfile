@@ -1,4 +1,8 @@
 FROM ollama/ollama
 RUN apt-get update && apt-get install -y curl
-RUN nohup bash -c "ollama serve &" && sleep 5 && ollama pull gemma:2b
-RUN nohup bash -c "ollama serve &" && sleep 5 && ollama pull nomic-embed-text
+
+# Ajout d'un script d'entrée pour démarrer le service et télécharger les modèles à l'exécution
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]

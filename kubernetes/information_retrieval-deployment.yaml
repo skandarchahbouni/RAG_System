@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: information-retrieval
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: information-retrieval
+  template:
+    metadata:
+      labels:
+        app: information-retrieval
+    spec:
+      containers:
+        - name: information-retrieval
+          image: youssef07/rag-information-retrieval
+          ports:
+            - containerPort: 5000
+          livenessProbe:
+            httpGet:
+              path: /docs
+              port: 5000
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          env:
+            - name: OLLAMA_API_HOST
+              value: "http://ollama:11434"
+            - name: EMBED_MODEL
+              value: "nomic-embed-text"
+            - name: COLLECTION_NAME
+              value: "stories_collection"
+            - name: CHROMA_HOST
+              value: "localhost"
+            - name: CHROMA_PORT
+              value: "8000"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: information-retrieval
+spec:
+  selector:
+    app: information-retrieval
+  ports:
+    - protocol: TCP
+      port: 5000
+      targetPort: 5000
+  type: ClusterIP
